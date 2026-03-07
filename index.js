@@ -12,6 +12,15 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir);
 }
 
+// Write test to verify directory is writable (helps debugging 500 errors on cloud platforms)
+try {
+    const testFile = path.join(uploadsDir, '.write-test');
+    fs.writeFileSync(testFile, 'writable');
+    console.log('Uploads directory is WRITABLE');
+} catch (err) {
+    console.error('CRITICAL: Uploads directory is NOT WRITABLE:', err.message);
+}
+
 // Routes (to be created)
 const serviceRoutes = require('./routes/serviceRoutes');
 const formRoutes = require('./routes/formRoutes');
@@ -47,6 +56,15 @@ app.use('/api/services', serviceRoutes);
 app.use('/api/forms', formRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/jobs', jobRoutes);
+
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    time: new Date(),
+    uploads: fs.existsSync(uploadsDir) ? 'exists' : 'missing'
+  });
+});
 
 app.get('/', (req, res) => {
   res.send('Cyber Cafe Backend is running');
