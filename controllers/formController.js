@@ -3,8 +3,18 @@ const FormRequest = require('../models/FormRequest');
 exports.submitForm = async (req, res) => {
   try {
     console.log('--- Form Submission Start ---');
-    const { fullName, email, phone, whatsapp, serviceType, details } = req.body;
-    console.log('Form Body:', { fullName, phone, serviceType });
+    let { fullName, email, phone, whatsapp, serviceType, details } = req.body;
+    
+    // transform name to uppercase as per user request
+    if (fullName) {
+      fullName = fullName.toUpperCase();
+    }
+
+    // Generate unique Customer ID
+    const nanoId = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const customerId = `JC-${nanoId}-${Date.now().toString().slice(-4)}`;
+
+    console.log('Form Body:', { fullName, phone, serviceType, customerId });
 
     let documents = [];
     if (req.files && Array.isArray(req.files)) {
@@ -20,7 +30,7 @@ exports.submitForm = async (req, res) => {
     }
 
     const newFormRequest = new FormRequest({
-      fullName, email, phone, whatsapp, serviceType, details, documents
+      customerId, fullName, email, phone, whatsapp, serviceType, details, documents
     });
 
     const savedRequest = await newFormRequest.save();
@@ -29,9 +39,19 @@ exports.submitForm = async (req, res) => {
     res.status(201).json(savedRequest);
   } catch (err) {
     console.error('CRITICAL ERROR in submitForm:', err);
+    
+    // Check if it's a duplicate key error (code 11000)
+    if (err.code === 11000) {
+      return res.status(400).json({ 
+        message: 'Duplicate record detected. This Customer ID or record already exists.',
+        error: err.message 
+      });
+    }
+
     res.status(500).json({ 
-      message: 'Server error processing your request. Please check the fields or try again later.',
-      error: err.message 
+      message: 'Server error processing your request.',
+      error: err.message,
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
   }
 };
@@ -56,7 +76,36 @@ exports.getFormById = async (req, res) => {
 
 exports.updateFormStatus = async (req, res) => {
   try {
-    const updatedForm = await FormRequest.findByIdAndUpdate(req.params.id, { status: req.body.status }, { new: true });
+    const { id } = req.params;
+    const { status } = req.body;
+    console.log(`[STATUS] Attempting update for ID: ${id} to ${status}`);
+    
+    const updatedForm = await FormRequest.findByIdAndUpdate(
+      id, 
+      { status }, 
+      { new: true }
+    );
+    
+    if (!updatedForm) {
+      console.log(`[STATUS] Record not found for ID: ${id}`);
+      return res.status(404).json({ message: 'Application record not found' });
+    }
+
+    console.log(`[STATUS] Successfully updated ID: ${id} to ${status}`);
+    res.json(updatedForm);
+  } catch (err) {
+    console.error(`[STATUS] ERROR updating ID: ${req.params.id}:`, err.message);
+    res.status(400).json({ message: err.message });
+  }
+};
+
+exports.updateFormNotes = async (req, res) => {
+  try {
+    const updatedForm = await FormRequest.findByIdAndUpdate(
+      req.params.id, 
+      { notes: req.body.notes }, 
+      { new: true }
+    );
     res.json(updatedForm);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -68,6 +117,31 @@ exports.deleteForm = async (req, res) => {
     const deletedForm = await FormRequest.findByIdAndDelete(req.params.id);
     if (!deletedForm) return res.status(404).json({ message: 'Form not found' });
     res.json({ message: 'Form deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.purgeCompletedForms = async (req, res) => {
+  try {
+    const result = await FormRequest.deleteMany({ status: 'Completed' });
+    res.json({ message: `Successfully deleted ${result.deletedCount} completed records`, count: result.deletedCount });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.trackApplication = async (req, res) => {
+  try {
+    const { customerId } = req.params;
+    const application = await FormRequest.findOne({ customerId: customerId.toUpperCase() })
+      .select('fullName serviceType status createdAt customerId notes');
+    
+    if (!application) {
+      return res.status(404).json({ message: 'No application found with this tracking ID' });
+    }
+    
+    res.json(application);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

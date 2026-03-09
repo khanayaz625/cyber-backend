@@ -3,5 +3,6 @@ const router = express.Router();
 const adminController = require('../controllers/adminController');
 
 router.post('/login', adminController.login);
+router.post('/update-credentials', adminController.updateCredentials);
 
 module.exports = router;

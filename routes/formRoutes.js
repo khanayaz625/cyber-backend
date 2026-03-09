@@ -19,6 +19,9 @@ router.post('/submit', upload.array('documents', 5), formController.submitForm);
 router.get('/', formController.getAllForms);
 router.get('/:id', formController.getFormById);
 router.patch('/:id/status', formController.updateFormStatus);
+router.patch('/:id/notes', formController.updateFormNotes);
+router.get('/track/:customerId', formController.trackApplication);
+router.delete('/purge', formController.purgeCompletedForms);
 router.delete('/:id', formController.deleteForm);
 
 module.exports = router;
