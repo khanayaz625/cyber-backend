@@ -11,6 +11,9 @@ const formRequestSchema = new mongoose.Schema({
   documents: [{ type: String }], // Array of file paths/filenames
   status: { type: String, enum: ['Pending', 'Processing', 'Verification', 'Completed', 'Rejected'], default: 'Pending' },
   notes: { type: String, default: '' },
+  paidAmount: { type: Number, default: 0 },
+  totalAmount: { type: Number, default: 0 },
+  paymentMethod: { type: String, enum: ['Cash', 'Online', 'Pending'], default: 'Pending' },
   createdAt: { type: Date, default: Date.now },
 });
 

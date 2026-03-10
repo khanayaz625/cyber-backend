@@ -4,7 +4,7 @@ exports.submitForm = async (req, res) => {
   try {
     console.log('--- Form Submission Start ---');
     let { fullName, email, phone, whatsapp, serviceType, details } = req.body;
-    
+
     // transform name to uppercase as per user request
     if (fullName) {
       fullName = fullName.toUpperCase();
@@ -39,16 +39,16 @@ exports.submitForm = async (req, res) => {
     res.status(201).json(savedRequest);
   } catch (err) {
     console.error('CRITICAL ERROR in submitForm:', err);
-    
+
     // Check if it's a duplicate key error (code 11000)
     if (err.code === 11000) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: 'Duplicate record detected. This Customer ID or record already exists.',
-        error: err.message 
+        error: err.message
       });
     }
 
-    res.status(500).json({ 
+    res.status(500).json({
       message: 'Server error processing your request.',
       error: err.message,
       stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
@@ -79,13 +79,13 @@ exports.updateFormStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
     console.log(`[STATUS] Attempting update for ID: ${id} to ${status}`);
-    
+
     const updatedForm = await FormRequest.findByIdAndUpdate(
-      id, 
-      { status }, 
+      id,
+      { status },
       { new: true }
     );
-    
+
     if (!updatedForm) {
       console.log(`[STATUS] Record not found for ID: ${id}`);
       return res.status(404).json({ message: 'Application record not found' });
@@ -102,11 +102,32 @@ exports.updateFormStatus = async (req, res) => {
 exports.updateFormNotes = async (req, res) => {
   try {
     const updatedForm = await FormRequest.findByIdAndUpdate(
-      req.params.id, 
-      { notes: req.body.notes }, 
+      req.params.id,
+      { notes: req.body.notes },
       { new: true }
     );
     res.json(updatedForm);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+exports.updatePayment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { paidAmount, totalAmount, paymentMethod } = req.body;
+
+    const form = await FormRequest.findById(id);
+    if (!form) {
+      return res.status(404).json({ message: 'Application not found' });
+    }
+
+    if (paidAmount !== undefined) form.paidAmount = Number(paidAmount);
+    if (totalAmount !== undefined) form.totalAmount = Number(totalAmount);
+    if (paymentMethod !== undefined) form.paymentMethod = paymentMethod;
+
+    const updated = await form.save();
+    res.json(updated);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -135,12 +156,12 @@ exports.trackApplication = async (req, res) => {
   try {
     const { customerId } = req.params;
     const application = await FormRequest.findOne({ customerId: customerId.toUpperCase() })
-      .select('fullName serviceType status createdAt customerId notes');
-    
+      .select('fullName serviceType status createdAt customerId notes paidAmount totalAmount phone paymentMethod');
+
     if (!application) {
       return res.status(404).json({ message: 'No application found with this tracking ID' });
     }
-    
+
     res.json(application);
   } catch (err) {
     res.status(500).json({ message: err.message });
