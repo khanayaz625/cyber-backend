@@ -67,7 +67,24 @@ app.get('/api/health', (req, res) => {
     status: 'ok',
     database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
     time: new Date(),
-    uploads: fs.existsSync(uploadsDir) ? 'exists' : 'missing'
+    uploads: fs.existsSync(uploadsDir) ? 'exists' : 'writable'
+  });
+});
+
+// Error Handling Middleware
+app.use((err, req, res, next) => {
+  console.error('SERVER ERROR:', err);
+  
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({ 
+      message: 'File upload error: ' + err.message,
+      error: err.code 
+    });
+  }
+
+  res.status(err.status || 500).json({
+    message: err.message || 'Internal Server Error',
+    error: process.env.NODE_ENV === 'development' ? err : {}
   });
 });
 

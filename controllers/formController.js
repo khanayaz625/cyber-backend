@@ -10,11 +10,7 @@ exports.submitForm = async (req, res) => {
       fullName = fullName.toUpperCase();
     }
 
-    // Generate unique Customer ID
-    const nanoId = Math.random().toString(36).substring(2, 6).toUpperCase();
-    const customerId = `JC-${nanoId}-${Date.now().toString().slice(-4)}`;
-
-    console.log('Form Body:', { fullName, phone, serviceType, customerId });
+    console.log('Form Body:', { fullName, phone, serviceType });
 
     let documents = [];
     if (req.files && Array.isArray(req.files)) {
@@ -30,7 +26,7 @@ exports.submitForm = async (req, res) => {
     }
 
     const newFormRequest = new FormRequest({
-      customerId, fullName, email, phone, whatsapp, serviceType, details, documents
+      fullName, email, phone, whatsapp, serviceType, details, documents
     });
 
     const savedRequest = await newFormRequest.save();
@@ -40,16 +36,8 @@ exports.submitForm = async (req, res) => {
   } catch (err) {
     console.error('CRITICAL ERROR in submitForm:', err);
 
-    // Check if it's a duplicate key error (code 11000)
-    if (err.code === 11000) {
-      return res.status(400).json({
-        message: 'Duplicate record detected. This Customer ID or record already exists.',
-        error: err.message
-      });
-    }
-
     res.status(500).json({
-      message: 'Server error processing your request.',
+      message: 'Server error processing your request: ' + err.message,
       error: err.message,
       stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });

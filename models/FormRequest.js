@@ -17,4 +17,14 @@ const formRequestSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
+// Pre-save hook to ensure customerId is always generated if missing
+formRequestSchema.pre('save', async function() {
+  if (!this.customerId) {
+    const nanoId = Math.random().toString(36).substring(2, 6).toUpperCase();
+    this.customerId = `JC-${nanoId}-${Date.now().toString().slice(-4)}`;
+  } else if (typeof this.customerId === 'string') {
+    this.customerId = this.customerId.toUpperCase();
+  }
+});
+
 module.exports = mongoose.model('FormRequest', formRequestSchema);
